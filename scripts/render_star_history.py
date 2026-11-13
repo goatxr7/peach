@@ -46,7 +46,8 @@ def daily_points(weeks: list[dict], as_of: datetime) -> list[tuple[datetime, int
                  if start + index * DAY <= as_of]
     first = next((index for index, (_, count) in enumerate(days) if count), None)
     if first is None:
-        raise ValueError("Star 历史里没有任何记录，拒绝生成空图")
+        # 新建 Fork 可能还没有 Star；返回当前 0 Star 状态而不是使定时任务失败。
+        return [(as_of, 0)]
     points, total = [(days[first][0], 0)], 0
     for day, count in days[first:]:
         total += count
@@ -120,6 +121,11 @@ def render(points: list[tuple[datetime, int]], repository: str, theme: str) -> s
     screen = [(x_of(moment), y_of(value)) for moment, value in points]
     line = monotone_path(screen)
     area = f"{line}L{screen[-1][0]:.2f},{BOTTOM}L{screen[0][0]:.2f},{BOTTOM}Z"
+    empty_note = (
+        f'<text x="{(LEFT + RIGHT) // 2}" y="{(TOP + BOTTOM) // 2}" '
+        'class="muted" font-size="18" text-anchor="middle">No stars yet</text>'
+        if total == 0 else ""
+    )
     grid = "".join(
         f'<line x1="{LEFT}" x2="{RIGHT}" y1="{y_of(tick):.2f}" y2="{y_of(tick):.2f}" class="axis"/>'
         f'<text x="{LEFT - 6}" y="{y_of(tick) + 3:.2f}" class="muted" font-size="10" text-anchor="end">'
@@ -150,7 +156,9 @@ def render(points: list[tuple[datetime, int]], repository: str, theme: str) -> s
         '<stop offset="1" class="stop" stop-opacity="0.02"/></linearGradient>'
         "</defs>"
         f'<text x="16" y="26" class="text" font-size="14" font-weight="600">{repository}</text>'
-        '<text x="16" y="42" class="muted" font-size="11">daily, since the first star</text>'
+        ('<text x="16" y="42" class="muted" font-size="11">No stars recorded yet</text>'
+         if total == 0 else
+         '<text x="16" y="42" class="muted" font-size="11">daily, since the first star</text>')
         f'<text x="{WIDTH - 16}" y="26" class="text" font-size="13" text-anchor="end">'
         f'<tspan class="accent">★</tspan> {total:,}</text>'
         f'<rect x="16" y="54" width="10" height="10" fill="{PEACH["l4"]}"/>'
@@ -158,6 +166,7 @@ def render(points: list[tuple[datetime, int]], repository: str, theme: str) -> s
         f"{grid}"
         f'<line x1="{LEFT}" x2="{LEFT}" y1="{TOP}" y2="{BOTTOM}" class="axis"/>'
         f"{dates}"
+        f"{empty_note}"
         f'<path d="{area}" fill="url(#stream)"/>'
         f'<g filter="url(#halo)" opacity="0.55"><path d="{line}" {stroke} stroke-width="8"/></g>'
         f'<g opacity="0.2"><path d="{line}" {stroke} stroke-width="6"/></g>'
