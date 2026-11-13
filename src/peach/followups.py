@@ -100,10 +100,13 @@ class Attempts:
         until = record.get("retry_until")
         return until is None or float(until) > self.clock()
 
-    def record(self, key: str, fingerprint: str, outcome: str, *,
+    def record(self, key: str, fingerprint: str, outcome: list, *,
                retry_after: float | None = None) -> None:
+        """`outcome` 是那一轮结论的段落（`task_outcomes`），文件里不存文字。"""
+        if not isinstance(outcome, list):
+            raise TypeError("Attempts.record takes outcome parts, not text")
         self.root.mkdir(parents=True, exist_ok=True)
-        entry = {"key": key, "fingerprint": fingerprint, "outcome": outcome,
+        entry = {"key": key, "fingerprint": fingerprint, "outcome_parts": outcome,
                  "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(self.clock()))}
         if retry_after is not None:
             entry["retry_until"] = self.clock() + float(retry_after)
@@ -145,7 +148,7 @@ def register(followup_type: FollowupType) -> FollowupType:
     """登记一种后继。同一个 task_key 只能登记一次——两份实现抢同一个身份时，
     活动页上那条记录说的是哪一个就再也答不出来了。"""
     if followup_type.task_key in REGISTRY:
-        raise ValueError(f"后继类型 {followup_type.task_key} 已经登记过")
+        raise ValueError(f"follow-up type {followup_type.task_key} is already registered")
     REGISTRY[followup_type.task_key] = followup_type
     return followup_type
 
@@ -307,7 +310,8 @@ class FollowupRunner:
         except Exception as error:  # 后继失败只是它自己失败，父任务的结论不动。
             LOGGER.warning("followup failed: %s: %s", run.followup_key, error,
                            exc_info=True)
-            handle.finish("failed", error=f"{type(error).__name__}: {error}")
+            from .user_messages import failure_fields
+            handle.finish("failed", **failure_fields(error))
             return
         summary = summary if isinstance(summary, dict) else {}
         handle.finish("succeeded", summary=summary)
