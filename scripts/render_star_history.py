@@ -136,6 +136,7 @@ def render(points: list[tuple[datetime, int]], repository: str, theme: str) -> s
         f'<text x="{x_of(tick):.2f}" y="{BOTTOM + 16}" class="muted" font-size="10" text-anchor="middle">'
         f"{tick:{label}}</text>"
         for tick in date_ticks(start, end))
+    subtitle = "No stars recorded yet" if total == 0 else "daily, since the first star"
     stroke = 'class="ink" stroke-linecap="round" stroke-linejoin="round"'
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}" height="{HEIGHT}" '
@@ -156,9 +157,7 @@ def render(points: list[tuple[datetime, int]], repository: str, theme: str) -> s
         '<stop offset="1" class="stop" stop-opacity="0.02"/></linearGradient>'
         "</defs>"
         f'<text x="16" y="26" class="text" font-size="14" font-weight="600">{repository}</text>'
-        ('<text x="16" y="42" class="muted" font-size="11">No stars recorded yet</text>'
-         if total == 0 else
-         '<text x="16" y="42" class="muted" font-size="11">daily, since the first star</text>')
+        f'<text x="16" y="42" class="muted" font-size="11">{subtitle}</text>'
         f'<text x="{WIDTH - 16}" y="26" class="text" font-size="13" text-anchor="end">'
         f'<tspan class="accent">★</tspan> {total:,}</text>'
         f'<rect x="16" y="54" width="10" height="10" fill="{PEACH["l4"]}"/>'
